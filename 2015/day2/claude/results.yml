@@ -1,0 +1,17 @@
+---
+year: '2015'
+day: 2
+who: claude
+title: I Was Told There Would Be No Math
+url: https://adventofcode.com/2015/day/2
+results:
+  main:
+    part1: '1586300'
+    part2: '3737498'
+  golf:
+    part1:
+      answer: '1586300'
+      tokens: 61
+    part2:
+      answer: '3737498'
+      tokens: 54

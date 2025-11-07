@@ -2,6 +2,7 @@
 
 require 'ripper'
 require 'fileutils'
+require 'yaml'
 
 def count_tokens(code)
   # Use Ripper to tokenize the Ruby code
@@ -100,21 +101,33 @@ def process_day(year, day, who)
     golf2_tokens = count_tokens(golf2_code)
   end
 
-  # Write results as markdown
-  results_path = File.join(who_dir, "results.md")
-  File.open(results_path, 'w') do |f|
-    f.puts "# #{problem_title}"
-    f.puts ""
-    f.puts "[Problem Link](#{problem_url})"
-    f.puts ""
-    f.puts "## Results"
-    f.puts ""
-    f.puts "| Part | Main Answer | Golf Answer | Golf Tokens |"
-    f.puts "|------|-------------|-------------|-------------|"
-    f.puts "| 1    | #{part1_answer || 'N/A'} | #{golf1_answer || 'N/A'} | #{golf1_tokens || 'N/A'} |"
-    f.puts "| 2    | #{part2_answer || 'N/A'} | #{golf2_answer || 'N/A'} | #{golf2_tokens || 'N/A'} |"
-  end
+  # Write results as YAML
+  results_path = File.join(who_dir, "results.yml")
+  results_data = {
+    'year' => year,
+    'day' => day.to_i,
+    'who' => who,
+    'title' => problem_title.sub(/^Day \d+: /, ''),
+    'url' => problem_url,
+    'results' => {
+      'main' => {
+        'part1' => part1_answer,
+        'part2' => part2_answer
+      },
+      'golf' => {
+        'part1' => {
+          'answer' => golf1_answer,
+          'tokens' => golf1_tokens
+        },
+        'part2' => {
+          'answer' => golf2_answer,
+          'tokens' => golf2_tokens
+        }
+      }
+    }
+  }
 
+  File.write(results_path, results_data.to_yaml)
   puts "  Results written to #{results_path}"
   true
 end
@@ -128,6 +141,126 @@ def find_all_days
     end
   end
   days.sort_by { |year, day, who| [year, day, who] }
+end
+
+def generate_scorecard(year)
+  results_by_day = {}
+
+  # Load all YAML results for the year
+  Dir.glob("#{year}/day*/*/results.yml").each do |path|
+    data = YAML.load_file(path)
+    day = data['day']
+    who = data['who']
+
+    results_by_day[day] ||= {}
+    results_by_day[day]['title'] = data['title']
+    results_by_day[day]['url'] = data['url']
+    results_by_day[day][who] = data['results']['golf']
+  end
+
+  return if results_by_day.empty?
+
+  # Generate scorecard markdown
+  scorecard_path = "#{year}/scorecard.md"
+  File.open(scorecard_path, 'w') do |f|
+    f.puts "# #{year} Code Golf Scorecard"
+    f.puts ""
+    f.puts "| Day | Problem | Me P1 | Claude P1 | Me P2 | Claude P2 |"
+    f.puts "|-----|---------|-------|-----------|-------|-----------|"
+
+    results_by_day.keys.sort.each do |day|
+      data = results_by_day[day]
+      title = data['title']
+
+      me_p1 = data.dig('me', 'part1', 'tokens')
+      claude_p1 = data.dig('claude', 'part1', 'tokens')
+      me_p2 = data.dig('me', 'part2', 'tokens')
+      claude_p2 = data.dig('claude', 'part2', 'tokens')
+
+      # Check if answers are valid (not nil/empty)
+      me_p1_valid = data.dig('me', 'part1', 'answer').to_s != ''
+      claude_p1_valid = data.dig('claude', 'part1', 'answer').to_s != ''
+      me_p2_valid = data.dig('me', 'part2', 'answer').to_s != ''
+      claude_p2_valid = data.dig('claude', 'part2', 'answer').to_s != ''
+
+      # Format with bold for winners (only if both answers are valid)
+      me_p1_str = if !me_p1_valid
+        '-'
+      elsif me_p1 && claude_p1 && me_p1 < claude_p1 && claude_p1_valid
+        "**#{me_p1}**"
+      elsif me_p1
+        me_p1.to_s
+      else
+        '-'
+      end
+
+      claude_p1_str = if !claude_p1_valid
+        '-'
+      elsif me_p1 && claude_p1 && claude_p1 < me_p1 && me_p1_valid
+        "**#{claude_p1}**"
+      elsif claude_p1
+        claude_p1.to_s
+      else
+        '-'
+      end
+
+      me_p2_str = if !me_p2_valid
+        '-'
+      elsif me_p2 && claude_p2 && me_p2 < claude_p2 && claude_p2_valid
+        "**#{me_p2}**"
+      elsif me_p2
+        me_p2.to_s
+      else
+        '-'
+      end
+
+      claude_p2_str = if !claude_p2_valid
+        '-'
+      elsif me_p2 && claude_p2 && claude_p2 < me_p2 && me_p2_valid
+        "**#{claude_p2}**"
+      elsif claude_p2
+        claude_p2.to_s
+      else
+        '-'
+      end
+
+      f.puts "| #{day} | #{title} | #{me_p1_str} | #{claude_p1_str} | #{me_p2_str} | #{claude_p2_str} |"
+    end
+
+    # Calculate totals
+    me_wins = 0
+    claude_wins = 0
+    ties = 0
+
+    results_by_day.each do |day, data|
+      ['part1', 'part2'].each do |part|
+        me_tokens = data.dig('me', part, 'tokens')
+        claude_tokens = data.dig('claude', part, 'tokens')
+        me_answer = data.dig('me', part, 'answer').to_s
+        claude_answer = data.dig('claude', part, 'answer').to_s
+
+        # Only count if both have valid answers
+        next unless me_tokens && claude_tokens && me_answer != '' && claude_answer != ''
+
+        if me_tokens < claude_tokens
+          me_wins += 1
+        elsif claude_tokens < me_tokens
+          claude_wins += 1
+        else
+          ties += 1
+        end
+      end
+    end
+
+    f.puts ""
+    f.puts "## Summary"
+    f.puts ""
+    f.puts "- Me: #{me_wins} wins"
+    f.puts "- Claude: #{claude_wins} wins"
+    f.puts "- Ties: #{ties}"
+  end
+
+  puts "Scorecard written to #{scorecard_path}"
 end
 
 # Main execution
@@ -159,6 +292,12 @@ if ARGV[0] == 'all'
 
   puts ""
   puts "Processed #{success_count}/#{days.length} days successfully"
+
+  # Generate scorecards for each year
+  years = days.map { |year, day, who| year }.uniq
+  years.each do |year|
+    generate_scorecard(year)
+  end
 elsif ARGV.length == 1 && ARGV[0] != 'all'
   # Path format: 2015/day1/claude or /full/path/2015/day1/claude
   path = ARGV[0]
@@ -167,6 +306,7 @@ elsif ARGV.length == 1 && ARGV[0] != 'all'
     unless process_day(year, day, who)
       exit 1
     end
+    generate_scorecard(year)
   else
     puts "Error: Could not parse path '#{path}'"
     puts "Expected format: <year>/day<day>/<who>"
@@ -179,6 +319,7 @@ elsif ARGV.length == 3
   unless process_day(year, day, who)
     exit 1
   end
+  generate_scorecard(year)
 else
   puts "Error: Expected 3 arguments (year, day, who), a path, or 'all'"
   exit 1

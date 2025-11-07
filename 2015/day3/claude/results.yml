@@ -1,0 +1,17 @@
+---
+year: '2015'
+day: 3
+who: claude
+title: Perfectly Spherical Houses in a Vacuum
+url: https://adventofcode.com/2015/day/3
+results:
+  main:
+    part1: '2565'
+    part2: '2639'
+  golf:
+    part1:
+      answer: '2565'
+      tokens: 72
+    part2:
+      answer: '2639'
+      tokens: 127

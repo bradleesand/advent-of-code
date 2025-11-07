@@ -15,6 +15,13 @@
             "name": "Runner",
             "request": "launch",
             "program": "ruby ${workspaceFolder}/runner.rb ${fileDirname}"
+        },
+        {
+            "type": "ruby_lsp",
+            "name": "Runner All",
+            "request": "launch",
+            "program": "ruby ${workspaceFolder}/runner.rb all"
+
         }
     ]
 }

@@ -1,0 +1,17 @@
+---
+year: '2015'
+day: 1
+who: me
+title: Not Quite Lisp
+url: https://adventofcode.com/2015/day/1
+results:
+  main:
+    part1: '74'
+    part2: '1795'
+  golf:
+    part1:
+      answer: '74'
+      tokens: 21
+    part2:
+      answer: '1795'
+      tokens: 37
