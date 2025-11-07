@@ -1,7 +1,7 @@
 ---
 year: '2015'
 day: 4
-who: me
+who: claude
 title: The Ideal Stocking Stuffer
 url: https://adventofcode.com/2015/day/4
 results:
@@ -11,7 +11,7 @@ results:
   golf:
     part1:
       answer: '254575'
-      tokens: 34
+      tokens: 42
     part2:
       answer: '1038736'
-      tokens: 34
+      tokens: 42
